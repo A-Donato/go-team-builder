@@ -1,5 +1,5 @@
 # Project configuration
-project_id = "your-project-id"
+project_id = "local-db-team-builder"
 
 [api]
 enabled = true

@@ -14,6 +14,21 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
+-- Create validate_match_player trigger function
+CREATE OR REPLACE FUNCTION validate_match_player()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM matches m
+        WHERE m.id = NEW.match_id 
+        AND (m.home_team = NEW.team_id OR m.away_team = NEW.team_id)
+    ) THEN
+        RAISE EXCEPTION 'team_id must match either home_team or away_team of the match';
+    END IF;
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
 -- Create teams table
 CREATE TABLE IF NOT EXISTS teams (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -55,15 +70,14 @@ CREATE TABLE IF NOT EXISTS match_players (
     position player_position NOT NULL,
     role player_role NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    PRIMARY KEY (match_id, player_id),
-    CONSTRAINT team_player_match CHECK (
-        team_id IN (
-            SELECT home_team FROM matches WHERE id = match_id
-            UNION
-            SELECT away_team FROM matches WHERE id = match_id
-        )
-    )
+    PRIMARY KEY (match_id, player_id)
 );
+
+-- Create trigger to validate team_id in match_players
+CREATE TRIGGER validate_match_player_trigger
+    BEFORE INSERT OR UPDATE ON match_players
+    FOR EACH ROW
+    EXECUTE FUNCTION validate_match_player();
 
 -- Create indexes for better query performance
 CREATE INDEX idx_matches_date ON matches(date DESC);
