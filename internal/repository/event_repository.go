@@ -1,36 +1,65 @@
 package repository
 
 import (
+	"context"
 	"soccer-service/internal/core/models"
-	"sync"
+
+	"github.com/jackc/pgx/v5"
 )
 
 type EventRepository struct {
-	events map[string]models.Event
-	mutex  sync.RWMutex
+	db *pgx.Conn
 }
 
-func NewEventRepository() *EventRepository {
-	return &EventRepository{
-		events: make(map[string]models.Event),
-	}
+func NewEventRepository(db *pgx.Conn) *EventRepository {
+	return &EventRepository{db: db}
 }
 
 func (r *EventRepository) Create(event models.Event) error {
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
-	r.events[event.ID] = event
-	return nil
+	query := `
+		INSERT INTO events (id, match_id, player_id, event_type, description, timestamp, rating)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+	`
+
+	_, err := r.db.Exec(context.Background(), query,
+		event.ID,
+		event.MatchID,
+		event.PlayerID,
+		event.Type,
+		event.Description,
+		event.Timestamp,
+		event.Rating,
+	)
+
+	return err
 }
 
 func (r *EventRepository) GetByMatch(matchID string) ([]models.Event, error) {
-	r.mutex.RLock()
-	defer r.mutex.RUnlock()
-	var matchEvents []models.Event
-	for _, event := range r.events {
-		if event.MatchID == matchID {
-			matchEvents = append(matchEvents, event)
-		}
+	query := `SELECT id, match_id, player_id, event_type, description, timestamp, rating FROM events WHERE match_id = $1`
+
+	rows, err := r.db.Query(context.Background(), query, matchID)
+	if err != nil {
+		return nil, err
 	}
-	return matchEvents, nil
-} 
+	defer rows.Close()
+
+	var events []models.Event
+	for rows.Next() {
+		var event models.Event
+		err := rows.Scan(
+			&event.ID,
+			&event.MatchID,
+			&event.PlayerID,
+			&event.Type,
+			&event.Description,
+			&event.Timestamp,
+			&event.Rating,
+		)
+		if err != nil {
+			return nil, err
+		}
+		events = append(events, event)
+	}
+
+	return events, nil
+}
