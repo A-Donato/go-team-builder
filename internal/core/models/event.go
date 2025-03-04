@@ -30,6 +30,7 @@ type Event struct {
 	Coordinates    Coordinates `json:"coordinates"`
 	Success        bool        `json:"success"` // Whether the action was successful
 	Impact         float64     `json:"impact"`  // Impact score of the event (0-1)
+	CreatedAt      time.Time   `json:"created_at"` // Add this field
 }
 
 type Coordinates struct {

@@ -23,6 +23,7 @@ type Match struct {
 	Result    MatchResult   `json:"result"`
 	Duration  int           `json:"duration"` // in minutes
 	Analysis  MatchAnalysis `json:"analysis"`
+	CreatedAt time.Time     `json:"created_at"` // Add this field
 }
 
 type Team struct {
@@ -43,6 +44,12 @@ type PlayerRole struct {
 	Role     string   `json:"role"` // e.g., "striker", "defensive_mid", "sweeper"
 }
 
+type TeamSynergyRecord struct {
+	Player1ID string
+	Player2ID string
+	Score     float64
+}
+
 type MatchAnalysis struct {
 	PossessionHome float64            `json:"possession_home"`
 	PossessionAway float64            `json:"possession_away"`
@@ -52,5 +59,5 @@ type MatchAnalysis struct {
 	PassesAway     int                `json:"passes_away"`
 	FoulsHome      int                `json:"fouls_home"`
 	FoulsAway      int                `json:"fouls_away"`
-	TeamSynergy    map[string]float64 `json:"team_synergy"` // player pair -> synergy score
+	TeamSynergy    []TeamSynergyRecord `json:"team_synergy"`
 }

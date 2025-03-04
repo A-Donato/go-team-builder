@@ -1,5 +1,7 @@
 package models
 
+import "time"
+
 type Position string
 type Gender string
 type AbilityLevel string
@@ -33,20 +35,23 @@ type Player struct {
 	Affinities  Affinities `json:"affinities"`
 	Versatility []Position `json:"versatility"` // Secondary positions they can play
 	Abilities   []Ability  `json:"abilities"`   // List of specific abilities
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
 }
 
 type Stats struct {
-	GoalsScored     int     `json:"goals_scored"`
-	Assists         int     `json:"assists"`
-	CleanSheets     int     `json:"clean_sheets"`
-	MatchesPlayed   int     `json:"matches_played"`
-	AverageRating   float64 `json:"average_rating"`
-	WinRate         float64 `json:"win_rate"`
-	PassAccuracy    float64 `json:"pass_accuracy"`
-	BallPossession  float64 `json:"ball_possession"`
-	Interceptions   int     `json:"interceptions"`
-	Tackles         int     `json:"tackles"`
-	DistanceCovered float64 `json:"distance_covered"` // in kilometers
+	GoalsScored     int       `json:"goals_scored"`
+	Assists         int       `json:"assists"`
+	CleanSheets     int       `json:"clean_sheets"`
+	MatchesPlayed   int       `json:"matches_played"`
+	AverageRating   float64   `json:"average_rating"`
+	WinRate         float64   `json:"win_rate"`
+	PassAccuracy    float64   `json:"pass_accuracy"`
+	BallPossession  float64   `json:"ball_possession"`
+	Interceptions   int       `json:"interceptions"`
+	Tackles         int       `json:"tackles"`
+	DistanceCovered float64   `json:"distance_covered"` // in kilometers
+	UpdatedAt       time.Time `json:"updated_at"`
 }
 
 // Affinities tracks how well a player performs with others

@@ -16,23 +16,113 @@ func NewMatchRepository(db *pgx.Conn) *MatchRepository {
 }
 
 func (r *MatchRepository) Create(match models.Match) error {
-	query := `
-		INSERT INTO matches (id, date, home_team, away_team, home_score, away_score, home_mvp, away_mvp)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-	`
+	tx, err := r.db.Begin(context.Background())
+	if (err != nil) {
+		return err
+	}
+	defer tx.Rollback(context.Background())
 
-	_, err := r.db.Exec(context.Background(), query,
+	// Insert match data
+	matchQuery := `
+		INSERT INTO matches (
+			id, date, home_score, away_score, 
+			home_mvp, away_mvp, result, duration
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+	`
+	_, err = tx.Exec(context.Background(), matchQuery,
 		match.ID,
 		match.Date,
-		match.HomeTeam.ID,
-		match.AwayTeam.ID,
 		match.HomeScore,
 		match.AwayScore,
 		match.HomeMVP,
 		match.AwayMVP,
+		match.Result,
+		match.Duration,
 	)
+	if err != nil {
+		return err
+	}
 
-	return err
+	// Insert team compositions
+	compQuery := `
+		INSERT INTO team_compositions (
+			match_id, is_home, formation, avg_rating, chemistry
+		) VALUES ($1, $2, $3, $4, $5)
+	`
+	_, err = tx.Exec(context.Background(), compQuery,
+		match.ID, true, match.HomeTeam.Composition.Formation,
+		match.HomeTeam.Composition.AvgRating, match.HomeTeam.Composition.Chemistry)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(context.Background(), compQuery,
+		match.ID, false, match.AwayTeam.Composition.Formation,
+		match.AwayTeam.Composition.AvgRating, match.AwayTeam.Composition.Chemistry)
+	if err != nil {
+		return err
+	}
+
+	// Insert match players
+	playerQuery := `
+		INSERT INTO match_players (
+			match_id, player_id, is_home, position, role
+		) VALUES ($1, $2, $3, $4, $5)
+	`
+	
+	// Insert home team players
+	for _, player := range match.HomeTeam.Composition.Players {
+		_, err = tx.Exec(context.Background(), playerQuery,
+			match.ID, player.PlayerID, true, player.Position, player.Role)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Insert away team players
+	for _, player := range match.AwayTeam.Composition.Players {
+		_, err = tx.Exec(context.Background(), playerQuery,
+			match.ID, player.PlayerID, false, player.Position, player.Role)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Insert match analysis
+	analysisQuery := `
+		INSERT INTO match_analysis (
+			match_id, possession_home, possession_away,
+			shots_home, shots_away, passes_home, passes_away,
+			fouls_home, fouls_away
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+	`
+	_, err = tx.Exec(context.Background(), analysisQuery,
+		match.ID,
+		match.Analysis.PossessionHome,
+		match.Analysis.PossessionAway,
+		match.Analysis.ShotsHome,
+		match.Analysis.ShotsAway,
+		match.Analysis.PassesHome,
+		match.Analysis.PassesAway,
+		match.Analysis.FoulsHome,
+		match.Analysis.FoulsAway,
+	)
+	if err != nil {
+		return err
+	}
+
+	// Insert team synergy data
+	for _, synergy := range match.Analysis.TeamSynergy {
+		_, err = tx.Exec(context.Background(),
+			`INSERT INTO team_synergy (match_id, player1_id, player2_id, synergy_score)
+			 VALUES ($1, $2, $3, $4)`,
+			match.ID, synergy.Player1ID, synergy.Player2ID, synergy.Score)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit(context.Background())
 }
 
 func (r *MatchRepository) Get(id string) (models.Match, error) {
